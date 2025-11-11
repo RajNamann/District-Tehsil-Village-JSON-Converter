@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>District → Tehsil → Villages Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f4f7fa;
+        margin: 0;
+        padding: 40px;
+    }
+
+    h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #333;
+    }
+
+    .container {
+        max-width: 700px;
+        margin: auto;
+        background: #fff;
+        padding: 25px 30px;
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+    }
+
+    input[type="file"] {
+        padding: 8px 10px;
+        border: 1px solid #bbb;
+        border-radius: 5px;
+        background: #fff;
+        width: 70%;
+    }
+
+    button {
+        padding: 8px 20px;
+        margin-left: 10px;
+        border: none;
+        border-radius: 5px;
+        background: #1976d2;
+        color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background: #0d47a1;
+    }
+
+    #resetBtn {
+        background: #d32f2f;
+    }
+
+    #resetBtn:hover {
+        background: #9a0007;
+    }
+
+    #output {
+        margin-top: 25px;
+        background: #1e1e1e;
+        color: #eee;
+        padding: 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        max-height: 500px;
+        overflow: auto;
+    }
+
+    .footer {
+        text-align: center;
+        margin-top: 25px;
+        font-size: 14px;
+        color: #555;
+    }
+</style>
+
+</head>
+<body>
+
+<div class="container">
+<h2>Excel → JSON (District-Tehsil-Village Converter)</h2>
+
+<input type="file" id="excelFile" accept=".xls,.xlsx">
+<button onclick="convert()">Convert</button>
+<button id="resetBtn" onclick="resetFields()">Reset</button>
+
+<pre id="output"></pre>
+</div>
+
+<div class="footer">Created by <strong>Naman R Srivastava</strong></div>
+
+<script>
+function convert() {
+    const file = document.getElementById("excelFile").files[0];
+    if (!file) { alert("Please upload Excel file."); return; }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+
+        let result = [];
+        let row = 1;
+
+        while (row < data.length) {
+
+            if (data[row][0] && data[row][0].toString().trim() !== "") {
+                var district = {
+                    District: data[row][0],
+                    tehsils: []
+                };
+                result.push(district);
+            }
+
+            for (let col = 1; col < data[row].length; col += 3) {
+
+                const tehsilName = data[row][col];
+                if (!tehsilName || tehsilName.toString().trim() === "") continue;
+
+                let villages = [];
+                let r = row + 1;
+
+                while (r < data.length &&
+                    (!data[r][col] || data[r][col].toString().trim() === "")) {
+
+                    let village = data[r][col + 1];
+                    if (village && village.toString().trim() !== "") {
+                        villages.push(village.toString().trim());
+                    }
+                    r++;
+                }
+
+                district.tehsils.push({
+                    tehsilName: tehsilName,
+                    Villages: villages
+                });
+            }
+
+            row++;
+        }
+
+        const jsonStr = JSON.stringify(result, null, 2);
+        document.getElementById("output").textContent = jsonStr;
+
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "district_tehsil_villages.json";
+        a.click();
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+function resetFields() {
+    document.getElementById("excelFile").value = "";
+    document.getElementById("output").textContent = "";
+}
+</script>
+
+</body>
+</html>
